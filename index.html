@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fan Engagement Idea Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <h1>Fan Engagement Idea Generator</h1>
+      <p>Generate tailored fan engagement strategies for your organization</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="fan-engagement-app">
+      <!-- Step 1: Organization Details -->
+      <div class="form-container" v-if="currentStep === 1">
+        <h2>Tell us about your organization</h2>
+        <form @submit.prevent="goToNextStep">
+          <div class="form-group">
+            <label for="productType">What type of product/service do you offer?</label>
+            <select id="productType" v-model="userInput.productType" required>
+              <option value="">Please select</option>
+              <option value="sports-team">Sports Team</option>
+              <option value="entertainment-venue">Entertainment Venue</option>
+              <option value="media-platform">Media Platform</option>
+              <option value="brand">Consumer Brand</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <div class="form-group" v-if="userInput.productType === 'sports-team'">
+            <label for="sportType">What sport?</label>
+            <select id="sportType" v-model="userInput.sportType">
+              <option value="">Please select</option>
+              <option value="basketball">Basketball</option>
+              <option value="football">Football</option>
+              <option value="baseball">Baseball</option>
+              <option value="hockey">Hockey</option>
+              <option value="soccer">Soccer</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="budgetRange">What's your budget range for engagement initiatives?</label>
+            <select id="budgetRange" v-model="userInput.budgetRange" required>
+              <option value="low">Low ($0-$5,000)</option>
+              <option value="medium">Medium ($5,000-$25,000)</option>
+              <option value="high">High ($25,000+)</option>
+            </select>
+          </div>
+          
+          <button type="submit" class="btn-primary" :disabled="!userInput.productType">Next</button>
+        </form>
+      </div>
+      
+      <!-- Step 2: Audience Information -->
+      <div class="form-container" v-if="currentStep === 2">
+        <h2>Tell us about your audience</h2>
+        <form @submit.prevent="goToNextStep">
+          <div class="form-group">
+            <label>Which audience segments are you targeting? (Select at least one)</label>
+            <div class="checkbox-group">
+              <label>
+                <input type="checkbox" v-model="userInput.targetAudience" value="families">
+                Families
+              </label>
+              <label>
+                <input type="checkbox" v-model="userInput.targetAudience" value="young-adults">
+                Young Adults (18-30)
+              </label>
+              <label>
+                <input type="checkbox" v-model="userInput.targetAudience" value="casual-fans">
+                Casual Fans
+              </label>
+              <label>
+                <input type="checkbox" v-model="userInput.targetAudience" value="hardcore-fans">
+                Hardcore Fans
+              </label>
+              <label>
+                <input type="checkbox" v-model="userInput.targetAudience" value="tech-savvy">
+                Tech-Savvy Users
+              </label>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="primaryChallenge">What's your primary engagement challenge?</label>
+            <select id="primaryChallenge" v-model="userInput.primaryChallenge" required>
+              <option value="">Please select</option>
+              <option value="acquisition">Attracting new fans</option>
+              <option value="retention">Keeping current fans engaged</option>
+              <option value="monetization">Converting engagement to revenue</option>
+              <option value="loyalty">Building deeper loyalty</option>
+              <option value="experience">Enhancing the fan experience</option>
+            </select>
+          </div>
+          
+          <div class="button-group">
+            <button type="button" class="btn-secondary" @click="goToPreviousStep">Back</button>
+            <button type="submit" class="btn-primary" :disabled="userInput.targetAudience.length === 0 || !userInput.primaryChallenge">Next</button>
+          </div>
+        </form>
+      </div>
+      
+      <!-- Step 3: Brand Values -->
+      <div class="form-container" v-if="currentStep === 3">
+        <h2>Tell us about your brand values</h2>
+        <form @submit.prevent="generateIdeas">
+          <div class="form-group">
+            <label>Select values that align with your brand (up to 5)</label>
+            <div class="checkbox-group values-grid">
+              <label v-for="value in availableBrandValues" :key="value">
+                <input type="checkbox" 
+                       v-model="userInput.brandValues" 
+                       :value="value"
+                       :disabled="userInput.brandValues.length >= 5 && !userInput.brandValues.includes(value)">
+                {{ value }}
+              </label>
+            </div>
+            <p class="helper-text">Selected: {{ userInput.brandValues.length }}/5</p>
+          </div>
+          
+          <div class="button-group">
+            <button type="button" class="btn-secondary" @click="goToPreviousStep">Back</button>
+            <button type="submit" class="btn-primary" :disabled="userInput.brandValues.length === 0">Generate Ideas</button>
+          </div>
+        </form>
+      </div>
+      
+      <!-- Loading State -->
+      <div class="loading-container" v-if="isLoading">
+        <div class="loading-spinner"></div>
+        <p>Generating your personalized engagement ideas...</p>
+      </div>
+      
+      <!-- Step 4: Results -->
+      <div class="results-container" v-if="currentStep === 4">
+        <h2>Your Fan Engagement Ideas</h2>
+        
+        <div class="filters">
+          <label>
+            Filter by type:
+            <select v-model="filters.category">
+              <option value="">All Types</option>
+              <option value="digital">Digital</option>
+              <option value="in-person">In-Person</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+          </label>
+        </div>
+        
+        <div class="ideas-grid">
+          <div class="idea-card" v-for="idea in filteredIdeas" :key="idea.id">
+            <h3>{{ idea.title }}</h3>
+            <div class="tags">
+              <span class="tag category-tag">{{ idea.category }}</span>
+              <span class="tag budget-tag">{{ idea.budgetLevel }}</span>
+            </div>
+            <p class="idea-description">{{ idea.description }}</p>
+            <div class="implementation">
+              <h4>Implementation:</h4>
+              <p>{{ idea.implementation }}</p>
+              <div class="details">
+                <p><strong>Est. Cost:</strong> {{ idea.estimatedCost }}</p>
+                <p><strong>Timeframe:</strong> {{ idea.timeToImplement }}</p>
+                <p><strong>Complexity:</strong> {{ idea.complexity }}</p>
+              </div>
+            </div>
+            <div class="metrics">
+              <h4>Potential Metrics:</h4>
+              <ul>
+                <li v-for="metric in idea.potentialMetrics" :key="metric">{{ metric }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div class="no-results" v-if="filteredIdeas.length === 0">
+          <p>No matching ideas found. Try adjusting your filter or <a href="#" @click.prevent="startOver">start over</a>.</p>
+        </div>
+        
+        <button class="btn-primary start-over" @click="startOver">Generate New Ideas</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2025 Fan Engagement Idea Generator | <a href="https://github.com/dxaginfo/fan-engagement-generator-app" target="_blank">GitHub Repository</a></p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>
